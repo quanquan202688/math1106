@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>边角边（SAS）三角形全等交互式演示</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --blue: #2563EB;
+    --blue-light: #DBEAFE;
+    --orange: #EA580C;
+    --orange-light: #FED7AA;
+    --green: #16A34A;
+    --red: #DC2626;
+    --bg: #F8FAFC;
+    --text: #1E293B;
+    --text-light: #64748B;
+    --border: #E2E8F0;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 20px 16px 40px; }
+
+  /* 标题区 */
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 {
+    font-size: 26px; font-weight: 700; letter-spacing: 1px;
+    color: var(--text); margin-bottom: 6px;
+  }
+  header .subtitle { font-size: 14px; color: var(--text-light); }
+
+  /* 模式切换 */
+  .mode-tabs {
+    display: flex; gap: 0; margin-bottom: 16px; background: #fff;
+    border-radius: 10px; padding: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    border: 1px solid var(--border);
+  }
+  .mode-tab {
+    flex: 1; padding: 10px 8px; text-align: center; border-radius: 7px;
+    cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text-light);
+    transition: all .2s; border: none; background: transparent;
+  }
+  .mode-tab.active {
+    background: var(--blue); color: #fff; box-shadow: 0 2px 6px rgba(37,99,235,.3);
+  }
+  .mode-tab:not(.active):hover { background: var(--bg); color: var(--text); }
+
+  /* 主画布区 */
+  .canvas-wrap {
+    background: #fff; border-radius: 12px; border: 1px solid var(--border);
+    box-shadow: 0 1px 3px rgba(0,0,0,.04); overflow: hidden; margin-bottom: 16px;
+  }
+  canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: default; }
+
+  /* 控制面板 */
+  .controls {
+    background: #fff; border-radius: 12px; border: 1px solid var(--border);
+    padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  .controls h3 { font-size: 15px; margin-bottom: 14px; color: var(--text); font-weight: 600; }
+  .slider-row { margin-bottom: 14px; }
+  .slider-row label {
+    display: flex; justify-content: space-between; font-size: 13px;
+    color: var(--text-light); margin-bottom: 6px;
+  }
+  .slider-row label .val { font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  .slider-row.blue label .val { color: var(--blue); }
+  .slider-row.orange label .val { color: var(--orange); }
+  .slider-row.angle label .val { color: #7C3AED; }
+  input[type="range"] {
+    width: 100%; height: 6px; border-radius: 3px; outline: none;
+    -webkit-appearance: none; background: var(--border);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; border: 2px solid var(--blue); cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,.15);
+  }
+  input[type="range"].orange::-webkit-slider-thumb { border-color: var(--orange); }
+  input[type="range"].angle::-webkit-slider-thumb { border-color: #7C3AED; }
+
+  /* 按钮组 */
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  .btn {
+    padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; border: none; transition: all .15s;
+  }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-primary:hover { background: #1D4ED8; }
+  .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: #EEF2F6; }
+  .btn-danger { background: var(--orange-light); color: var(--orange); }
+  .btn-danger:hover { background: #FDBA74; }
+
+  /* 数据对比面板 */
+  .data-panel {
+    background: #fff; border-radius: 12px; border: 1px solid var(--border);
+    padding: 16px 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  .data-panel h3 { font-size: 15px; margin-bottom: 10px; font-weight: 600; }
+  .data-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+    font-size: 13px;
+  }
+  .data-cell { padding: 8px 10px; border-radius: 6px; background: var(--bg); }
+  .data-cell .k { color: var(--text-light); font-size: 12px; }
+  .data-cell .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .data-cell.blue .v { color: var(--blue); }
+  .data-cell.orange .v { color: var(--orange); }
+
+  /* 结论提示 */
+  .verdict {
+    padding: 14px 16px; border-radius: 10px; font-size: 14px;
+    margin-bottom: 16px; line-height: 1.7;
+  }
+  .verdict.ok { background: #DCFCE7; color: #166534; border: 1px solid #86EFAC; }
+  .verdict.no { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+  .verdict.info { background: #EFF6FF; color: #1E40AF; border: 1px solid #BFDBFE; }
+
+  /* 教学说明 */
+  .explain {
+    background: #fff; border-radius: 12px; border: 1px solid var(--border);
+    padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  .explain h3 { font-size: 15px; margin-bottom: 10px; font-weight: 600; }
+  .explain p { font-size: 14px; color: var(--text); margin-bottom: 8px; }
+  .explain .formula {
+    display: inline-block; padding: 2px 8px; background: var(--bg);
+    border-radius: 4px; font-family: "Times New Roman", serif; font-style: italic;
+    font-size: 15px;
+  }
+  .explain ul { padding-left: 20px; margin-top: 6px; }
+  .explain li { font-size: 14px; margin-bottom: 4px; color: var(--text); }
+
+  @media (max-width: 600px) {
+    header h1 { font-size: 20px; }
+    .data-grid { grid-template-columns: 1fr; }
+    .btn { flex: 1; padding: 10px 12px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>边角边（S A S）三角形全等判定</h1>
+    <p class="subtitle">拖动滑块或顶点，观察两边及夹角如何决定三角形形状</p>
+  </header>
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" data-mode="sas">SAS 验证模式</button>
+    <button class="mode-tab" data-mode="ssa">SSA 反例模式</button>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="cv" width="900" height="480"></canvas>
+  </div>
+
+  <div class="controls">
+    <h3>参数调节</h3>
+    <div class="slider-row blue">
+      <label>边 AB（蓝色）<span class="val" id="abVal">160 px</span></label>
+      <input type="range" id="abSlider" min="80" max="220" value="160">
+    </div>
+    <div class="slider-row orange">
+      <label>边 AC（橙色）<span class="val" id="acVal">120 px</span></label>
+      <input type="range" id="acSlider" min="60" max="200" value="120">
+    </div>
+    <div class="slider-row angle">
+      <label>夹角 ∠A（紫色）<span class="val" id="angVal">60°</span></label>
+      <input type="range" id="angSlider" min="15" max="150" value="60">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="mergeBtn">叠合演示</button>
+      <button class="btn btn-secondary" id="resetBtn">重置</button>
+      <button class="btn btn-secondary" id="rotateBtn">旋转视角</button>
+    </div>
+  </div>
+
+  <div class="data-panel">
+    <h3>数据对比</h3>
+    <div class="data-grid">
+      <div class="data-cell blue">
+        <div class="k">△ABC 边 AB</div>
+        <div class="v" id="dAB">160 px</div>
+      </div>
+      <div class="data-cell orange">
+        <div class="k">△A'B'C' 边 A'B'</div>
+        <div class="v" id="dA2B2">160 px</div>
+      </div>
+      <div class="data-cell" style="background:var(--orange-light)">
+        <div class="k">是否相等</div>
+        <div class="v" style="color:var(--green)" id="eq1">✓ 相等</div>
+      </div>
+      <div class="data-cell blue">
+        <div class="k">△ABC 边 AC</div>
+        <div class="v" id="dAC">120 px</div>
+      </div>
+      <div class="data-cell orange">
+        <div class="k">△A'B'C' 边 A'C'</div>
+        <div class="v" id="dA2C2">120 px</div>
+      </div>
+      <div class="data-cell" style="background:var(--orange-light)">
+        <div class="k">是否相等</div>
+        <div class="v" style="color:var(--green)" id="eq2">✓ 相等</div>
+      </div>
+      <div class="data-cell blue">
+        <div class="k">∠A（夹角）</div>
+        <div class="v" id="dAng">60°</div>
+      </div>
+      <div class="data-cell orange">
+        <div class="k">∠A'（夹角）</div>
+        <div class="v" id="dAng2">60°</div>
+      </div>
+      <div class="data-cell" style="background:var(--orange-light)">
+        <div class="k">是否相等</div>
+        <div class="v" style="color:var(--green)" id="eq3">✓ 相等</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict ok" id="verdict">
+    <strong>结论：</strong>两边及其夹角对应相等 → △ABC ≅ △A'B'C'（边角边公理）
+  </div>
+
+  <div class="explain">
+    <h3>知识点说明</h3>
+    <p><span class="formula">SAS</span>（Side-Angle-Side）：如果两个三角形有<strong>两边及其夹角</strong>分别对应相等，那么这两个三角形全等。</p>
+    <ul>
+      <li>关键：角必须是两边的<strong>夹角</strong>（即两条边所夹的角）。</li>
+      <li>当 AB、AC、∠A 三个量确定后，三角形的形状和大小就<strong>唯一确定</strong>了。</li>
+      <li>点击「叠合演示」可以看到两个三角形能够完全重合。</li>
+    </ul>
+    <p style="margin-top:10px"><strong>反例警示：</strong>如果相等的角不是夹角（即 <span class="formula">SSA</span>），三角形不一定唯一——切换到「SSA 反例模式」观察。</p>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+// 状态
+const state = {
+  ab: 160,       // 边AB长度（像素）
+  ac: 120,       // 边AC长度（像素）
+  angle: 60,     // 夹角（度）
+  mode: 'sas',   // sas | ssa
+  merging: false,
+  mergeProgress: 0,  // 0=分开, 1=完全重合
+  rotation: 0,       // 旋转视角
+  dragVertex: null,  // 正在拖动的顶点
+  offsetX: 0, offsetY: 0,
+};
+
+// 三角形顶点计算
+function computeTriangles() {
+  const rad = state.angle * Math.PI / 180;
+  const s = state.ab, t = state.ac;
+  const rot = state.rotation * Math.PI / 180;
+
+  // 左三角形基准点
+  const baseAX = 140, baseAY = 330;
+  // 右三角形基准点
+  const baseA2X = 560, baseA2Y = 330;
+
+  // 叠合动画：右三角形向左侧移动
+  const mp = state.mergeProgress;
+  const rx = baseA2X + (baseAX - baseA2X) * mp;
+  const ry = baseA2Y + (baseAY - baseA2Y) * mp;
+
+  // 旋转应用
+  function rotPt(px, py, cx, cy, r) {
+    const dx = px - cx, dy = py - cy;
+    return [cx + dx*Math.cos(r) - dy*Math.sin(r), cy + dx*Math.sin(r) + dy*Math.cos(r)];
+  }
+
+  // 左三角形
+  const A = [baseAX, baseAY];
+  const B = [baseAX + s, baseAY];
+  const C = [baseAX + t * Math.cos(rad), baseAY - t * Math.sin(rad)];
+  let tri1 = [A, B, C];
+  if (state.rotation !== 0) {
+    tri1 = tri1.map(p => rotPt(p[0], p[1], baseAX + s/2, baseAY - t/3, rot));
+  }
+
+  // 右三角形
+  const A2 = [rx, ry];
+  const B2 = [rx + s, ry];
+  let C2;
+  if (state.mode === 'sas') {
+    C2 = [rx + t * Math.cos(rad), ry - t * Math.sin(rad)];
+  } else {
+    // SSA 模式：固定AB和角B，AC边长度固定，但C点有两个解
+    // 角在B点：AB方向是水平的，角B = 固定角度
+    const beta = rad; // 用同一个角度作为B角
+    // 从B点出发，与BA方向夹角beta，长度t的射线
+    // BA方向是向左（180度），射线与BA夹角beta向上
+    const dir = Math.PI - beta; // 从B点出发的方向
+    C2 = [B2[0] + t * Math.cos(dir), B2[1] - t * Math.sin(dir)];
+  }
+  let tri2 = [A2, B2, C2];
+  if (state.rotation !== 0) {
+    const cx2 = rx + s/2, cy2 = ry - t/3;
+    tri2 = tri2.map(p => rotPt(p[0], p[1], cx2, cy2, rot));
+  }
+
+  // SSA模式额外画一个"第二个解"三角形（镜像）
+  let tri2b = null;
+  if (state.mode === 'ssa') {
+    const dir2 = Math.PI + beta; // 向下
+    const C2b = [B2[0] + t * Math.cos(dir2), B2[1] - t * Math.sin(dir2)];
+    tri2b = [A2, B2, C2b];
+    if (state.rotation !== 0) {
+      const cx2 = rx + s/2, cy2 = ry;
+      tri2b = tri2b.map(p => rotPt(p[0], p[1], cx2, cy2, rot));
+    }
+  }
+
+  return { tri1, tri2, tri2b };
+}
+
+function drawGrid() {
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = '#F1F5F9';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+}
+
+function drawTri(tri, fillColor, strokeColor, label, labelColor) {
+  ctx.beginPath();
+  ctx.moveTo(tri[0][0], tri[0][1]);
+  ctx.lineTo(tri[1][0], tri[1][1]);
+  ctx.lineTo(tri[2][0], tri[2][1]);
+  ctx.closePath();
+  ctx.fillStyle = fillColor;
+  ctx.globalAlpha = 0.25;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // 顶点标签
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillStyle = labelColor;
+  const labels = ['A', 'B', 'C'];
+  for (let i = 0; i < 3; i++) {
+    const [px, py] = tri[i];
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, Math.PI * 2);
+    ctx.fillStyle = strokeColor;
+    ctx.fill();
+    ctx.fillStyle = labelColor;
+    ctx.fillText(label[i] + (label || ''), px + 8, py - 8);
+  }
+}
+
+function drawAngleArc(tri, color) {
+  // 在A点画夹角弧
+  const A = tri[0], B = tri[1], C = tri[2];
+  const r = 28;
+  const angAB = Math.atan2(B[1] - A[1], B[0] - A[0]);
+  const angAC = Math.atan2(C[1] - A[1], C[0] - A[0]);
+  ctx.beginPath();
+  ctx.arc(A[0], A[1], r, Math.min(angAB, angAC), Math.max(angAB, angAC));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // 角度标签
+  const midAng = (angAB + angAC) / 2;
+  ctx.fillStyle = color;
+  ctx.font = 'bold 13px sans-serif';
+  ctx.fillText(state.angle + '°', A[0] + r * Math.cos(midAng) + 4, A[1] + r * Math.sin(midAng) - 4);
+}
+
+function drawAngleArcB(tri, color) {
+  // SSA模式：在B点画角
+  const A = tri[0], B = tri[1], C = tri[2];
+  const r = 28;
+  const angBA = Math.atan2(A[1] - B[1], A[0] - B[0]);
+  const angBC = Math.atan2(C[1] - B[1], C[0] - B[0]);
+  ctx.beginPath();
+  ctx.arc(B[0], B[1], r, Math.min(angBA, angBC), Math.max(angBA, angBC));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function render() {
+  drawGrid();
+  const { tri1, tri2, tri2b } = computeTriangles();
+
+  // 标题
+  ctx.font = 'bold 15px sans-serif';
+  ctx.fillStyle = '#64748B';
+  ctx.fillText('△ABC（已知）', tri1[0][0] - 10, 50);
+  ctx.fillText(state.mode === 'sas' ? '△A\'B\'C\'（验证）' : '两个不同三角形', tri2[0][0] - 10, 50);
+
+  drawTri(tri1, '#2563EB', '#2563EB', '', '#1E40AF');
+  if (state.mode === 'sas') {
+    drawTri(tri2, '#EA580C', '#EA580C', "'", '#9A3412');
+  } else {
+    drawTri(tri2, '#EA580C', '#EA580C', "'", '#9A3412');
+    drawTri(tri2b, '#7C3AED', '#7C3AED', "''", '#5B21B6');
+  }
+
+  if (state.mode === 'sas') {
+    drawAngleArc(tri1, '#7C3AED');
+    drawAngleArc(tri2, '#7C3AED');
+  } else {
+    drawAngleArcB(tri1, '#7C3AED');
+    drawAngleArcB(tri2, '#7C3AED');
+    drawAngleArcB(tri2b, '#7C3AED');
+  }
+
+  // 边长标注 AB
+  ctx.font = '13px sans-serif';
+  ctx.fillStyle = '#2563EB';
+  const midAB1 = [(tri1[0][0]+tri1[1][0])/2, (tri1[0][1]+tri1[1][1])/2];
+  ctx.fillText('AB=' + state.ab, midAB1[0] - 20, midAB1[1] + 20);
+
+  if (state.mode === 'sas') {
+    ctx.fillStyle = '#EA580C';
+    const midAB2 = [(tri2[0][0]+tri2[1][0])/2, (tri2[0][1]+tri2[1][1])/2];
+    ctx.fillText("A'B'=" + state.ab, midAB2[0] - 20, midAB2[1] + 20);
+  }
+}
+
+// 滑块绑定
+const abSlider = document.getElementById('abSlider');
+const acSlider = document.getElementById('acSlider');
+const angSlider = document.getElementById('angSlider');
+
+function updateUI() {
+  state.ab = +abSlider.value;
+  state.ac = +acSlider.value;
+  state.angle = +angSlider.value;
+  document.getElementById('abVal').textContent = state.ab + ' px';
+  document.getElementById('acVal').textContent = state.ac + ' px';
+  document.getElementById('angVal').textContent = state.angle + '°';
+  document.getElementById('dAB').textContent = state.ab + ' px';
+  document.getElementById('dA2B2').textContent = state.ab + ' px';
+  document.getElementById('dAC').textContent = state.ac + ' px';
+  document.getElementById('dA2C2').textContent = state.ac + ' px';
+  document.getElementById('dAng').textContent = state.angle + '°';
+  document.getElementById('dAng2').textContent = state.angle + '°';
+  render();
+}
+
+abSlider.addEventListener('input', updateUI);
+acSlider.addEventListener('input', updateUI);
+angSlider.addEventListener('input', updateUI);
+
+// 叠合动画
+let mergeAnim = null;
+document.getElementById('mergeBtn').addEventListener('click', () => {
+  if (mergeAnim) cancelAnimationFrame(mergeAnim);
+  const start = performance.now();
+  const from = state.mergeProgress;
+  const to = state.mergeProgress > 0.5 ? 0 : 1;
+  function step(now) {
+    const t = Math.min((now - start) / 1200, 1);
+    const e = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2; // easeInOut
+    state.mergeProgress = from + (to - from) * e;
+    render();
+    if (t < 1) mergeAnim = requestAnimationFrame(step);
+    else {
+      state.mergeProgress = to;
+      render();
+      updateVerdict();
+    }
+  }
+  mergeAnim = requestAnimationFrame(step);
+});
+
+function updateVerdict() {
+  const v = document.getElementById('verdict');
+  if (state.mode === 'sas') {
+    v.className = 'verdict ok';
+    v.innerHTML = '<strong>结论：</strong>两边及其夹角对应相等 → △ABC ≅ △A\'B\'C\'（边角边公理 SAS）。三个条件确定后，三角形形状大小唯一，可完全重合。';
+  } else {
+    v.className = 'verdict no';
+    v.innerHTML = '<strong>反例：</strong>两边及其中一边的对角（SSA）不能保证三角形唯一！图中橙色和紫色是满足相同条件的<strong>两个不同</strong>三角形，因此 SSA 不能判定全等。';
+  }
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  abSlider.value = 160; acSlider.value = 120; angSlider.value = 60;
+  state.rotation = 0; state.mergeProgress = 0;
+  updateUI(); updateVerdict();
+});
+
+document.getElementById('rotateBtn').addEventListener('click', () => {
+  state.rotation = (state.rotation + 30) % 360;
+  render();
+});
+
+// 模式切换
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    state.mode = tab.dataset.mode;
+    state.mergeProgress = 0;
+    // SSA模式下角度标签改
+    document.querySelector('.slider-row.angle label').innerHTML =
+      state.mode === 'sas' ? '夹角 ∠A（紫色）<span class="val" id="angVal">' + state.angle + '°</span>'
+                           : 'B 角（非夹角）<span class="val" id="angVal">' + state.angle + '°</span>';
+    updateUI(); updateVerdict();
+  });
+});
+
+// 画布拖动（微调角度）
+cv.addEventListener('pointerdown', (e) => {
+  const rect = cv.getBoundingClientRect();
+  const sx = cv.width / rect.width, sy = cv.height / rect.height;
+  const mx = (e.clientX - rect.left) * sx;
+  const my = (e.clientY - rect.top) * sy;
+  const { tri1 } = computeTriangles();
+  // 检查是否点到了C点
+  const C = tri1[2];
+  if (Math.hypot(mx - C[0], my - C[1]) < 20) {
+    state.dragVertex = 'C';
+    cv.setPointerCapture(e.pointerId);
+  }
+});
+cv.addEventListener('pointermove', (e) => {
+  if (state.dragVertex !== 'C') return;
+  const rect = cv.getBoundingClientRect();
+  const sx = cv.width / rect.width, sy = cv.height / rect.height;
+  const mx = (e.clientX - rect.left) * sx;
+  const my = (e.clientY - rect.top) * sy;
+  const { tri1 } = computeTriangles();
+  const A = tri1[0];
+  const dx = mx - A[0], dy = -(my - A[1]);
+  const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+  const len = Math.hypot(dx, dy);
+  state.angle = Math.max(15, Math.min(150, ang));
+  state.ac = Math.max(60, Math.min(200, len));
+  angSlider.value = state.angle;
+  acSlider.value = state.ac;
+  updateUI();
+});
+cv.addEventListener('pointerup', () => { state.dragVertex = null; });
+
+updateUI();
+updateVerdict();
+</script>
+</body>
+</html>
